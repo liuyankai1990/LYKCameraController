@@ -82,7 +82,7 @@ typedef enum{
     if (_imageView == nil) {
         _imageView = [[UIImageView alloc] init];
         _imageView.hidden = YES;
-        _imageView.frame = CGRectMake(0, 64, self.view.bounds.size.width, self.view.bounds.size.height - 64 - 49);
+        _imageView.frame = CGRectMake(0, kTopBarHeight, self.view.bounds.size.width, self.view.bounds.size.height - kTopBarHeight - kBottomBarHeight);
         [self.view addSubview:_imageView];
     }
     return _imageView;
@@ -119,7 +119,7 @@ typedef enum{
 - (void)setupTopBar {
     
     UIView *topBackView = [[UIView alloc] init];
-    topBackView.frame = CGRectMake(0, 0, self.view.bounds.size.width, 64);
+    topBackView.frame = CGRectMake(0, 0, self.view.bounds.size.width, kTopBarHeight);
     topBackView.backgroundColor = [UIColor darkTextColor];
     [self.view addSubview:topBackView];
     
@@ -168,12 +168,12 @@ typedef enum{
     
     //tabBarView
     UIView *tabBackView = [[UIView alloc] init];
-    tabBackView.frame = CGRectMake(0, self.view.bounds.size.height - 49, self.view.bounds.size.width, 49);
+    tabBackView.frame = CGRectMake(0, self.view.bounds.size.height - kBottomBarHeight, self.view.bounds.size.width, kBottomBarHeight);
     tabBackView.backgroundColor = [UIColor blackColor];
     [self.view addSubview:tabBackView];
     
     CGFloat buttonWidth = self.view.bounds.size.width / 3;
-    CGFloat buttonHeight = 49;
+    CGFloat buttonHeight = kBottomBarHeight;
     //重拍按钮
     UIButton *reTakeBtn = [UIButton buttonWithType:UIButtonTypeCustom];
     reTakeBtn.frame = CGRectMake(0, 0, buttonWidth, buttonHeight);
@@ -235,7 +235,7 @@ typedef enum{
     
     
     UIView *previewView = [[UIView alloc] init];
-    previewView.frame = CGRectMake(0, 64, self.view.bounds.size.width, self.view.bounds.size.height - 64 - 49);
+    previewView.frame = CGRectMake(0, kTopBarHeight, self.view.bounds.size.width, self.view.bounds.size.height - kTopBarHeight - kTopBarHeight);
     previewView.backgroundColor = [UIColor blackColor];
     [self.view addSubview:previewView];
     self.previewView = previewView;
