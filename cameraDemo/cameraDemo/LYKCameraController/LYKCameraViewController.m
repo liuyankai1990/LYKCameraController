@@ -90,6 +90,10 @@ typedef enum{
 - (UIMenuController *)menuController {
     if (_menuController == nil) {
         _menuController = [[UIMenuController alloc] init];
+        UIMenuItem *autoItem = [[UIMenuItem alloc] initWithTitle:kAutoTitle action:@selector(selectedAutoFlash)];
+        UIMenuItem *noneItem = [[UIMenuItem alloc] initWithTitle:kOffTitle action:@selector(selectedNoneFlash)];
+        UIMenuItem *openItem = [[UIMenuItem alloc] initWithTitle:kOpenTitle action:@selector(selectedOpenFlash)];
+        [_menuController setMenuItems:@[autoItem,noneItem,openItem]];
     }
     return _menuController;
 }
@@ -389,10 +393,7 @@ typedef enum{
 }
 - (void)flashTypeButtonClick:(UIButton *)sender {
     [sender becomeFirstResponder];
-    UIMenuItem *autoItem = [[UIMenuItem alloc] initWithTitle:kAutoTitle action:@selector(selectedAutoFlash)];
-    UIMenuItem *noneItem = [[UIMenuItem alloc] initWithTitle:kOffTitle action:@selector(selectedNoneFlash)];
-    UIMenuItem *openItem = [[UIMenuItem alloc] initWithTitle:kOpenTitle action:@selector(selectedOpenFlash)];
-    [self.menuController setMenuItems:@[autoItem,noneItem,openItem]];
+    
     [self.menuController setTargetRect:self.flashButton.frame inView:self.flashButton];
     [self.menuController setMenuVisible:YES animated:YES];
     
