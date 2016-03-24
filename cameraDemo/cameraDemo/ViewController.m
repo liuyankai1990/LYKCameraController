@@ -37,9 +37,10 @@
     [super viewDidLoad];
     
     UIButton *button  = [[UIButton alloc] init];
-    button.frame = CGRectMake(100, 200, 60, 60);
-    [button setTitle:@"跳啊" forState:UIControlStateNormal];
+    button.frame = CGRectMake(self.view.frame.size.width / 2 - 100 , self.view.frame.size.height / 2 - 20, 200, 40);
+    [button setTitle:@"打开相机控制器" forState:UIControlStateNormal];
     [button setTitleColor:[UIColor blackColor] forState:UIControlStateNormal];
+    [button setBackgroundColor:[UIColor lightGrayColor]];
     [button addTarget:self action:@selector(jump) forControlEvents:UIControlEventTouchUpInside];
     [self.view addSubview:button];
 

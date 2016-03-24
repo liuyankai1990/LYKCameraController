@@ -49,9 +49,14 @@ typedef enum{
 @property (nonatomic,assign) CGFloat effectiveScale;
 /**闪光灯类型*/
 @property (nonatomic,assign) LYKCameraFlashType flashType;
+/**选择闪光灯类型Menu*/
 @property (nonatomic,strong) UIMenuController *menuController;
+/**闪光灯按钮*/
 @property (nonatomic,strong) LYKCustomButton *flashButton;
+/**系统闪光灯类型*/
 @property (nonatomic,assign) AVCaptureFlashMode flashMode;
+/**聚焦小框*/
+@property (nonatomic,weak) UIImageView *focusView;
 
 
 @end
@@ -108,18 +113,30 @@ typedef enum{
         self.flashMode = AVCaptureFlashModeOff;
     }
 }
-
+#pragma mark -----  初始化
 - (void)viewDidLoad {
     [super viewDidLoad];
     self.effectiveScale = self.beginGestureScale = 1.0f;
     [self setTabBarView];
     [self setupTopBar];
-     [self setupDevice];
-    
-    
-    
+    [self setupDevice];
+    [self setupFocusView];
 }
-
+- (void)viewWillAppear:(BOOL)animated {
+    [super viewWillAppear:animated];
+    if (self.session) {
+        [self.session startRunning];
+    }
+}
+- (void)viewDidDisappear:(BOOL)animated {
+    [super viewDidDisappear:animated];
+    
+    if (self.session) {
+        [self.session stopRunning];
+    }
+}
+#pragma mark -----  初始化SubViews
+/**初始化顶部View*/
 - (void)setupTopBar {
     
     UIView *topBackView = [[UIView alloc] init];
@@ -162,12 +179,8 @@ typedef enum{
     [directionBtn setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
     [directionBtn addTarget:self action:@selector(directionBtnClick:) forControlEvents:UIControlEventTouchUpInside];
     [topBackView addSubview:directionBtn];
-    
-    
-    
-    
-    
 }
+/**初始化底部View*/
 - (void)setTabBarView {
     
     //tabBarView
@@ -215,7 +228,7 @@ typedef enum{
     
     
 }
-
+/**初始化设备*/
 - (void)setupDevice {
     AVCaptureDevice *device = [AVCaptureDevice defaultDeviceWithMediaType:AVMediaTypeVideo];
     //先锁定。防止其他线程修改
@@ -244,6 +257,10 @@ typedef enum{
     [self.view addSubview:previewView];
     self.previewView = previewView;
     
+    UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc] init];
+    [tap addTarget:self action:@selector(focusGesture:)];
+    [previewView addGestureRecognizer:tap];
+    
     UIPinchGestureRecognizer *pinch = [[UIPinchGestureRecognizer alloc] initWithTarget:self action:@selector(handlePinchGesture:)];
     pinch.delegate = self;
     [previewView addGestureRecognizer:pinch];
@@ -255,6 +272,19 @@ typedef enum{
     [previewView.layer addSublayer:self.previewLayer];
     
 }
+/**初始化聚焦View*/
+- (void)setupFocusView {
+    //点击频幕聚焦时闪烁的View
+    /*这里也可以使用一个自定义的View,通过drawRect画边框来实现*/
+    UIImageView *focusView = [[UIImageView alloc] init];
+    focusView.frame = CGRectMake(0, 0, 50, 50);
+    focusView.hidden = YES;
+    focusView.alpha = 0.0;
+    focusView.image = [UIImage imageNamed:@"focus_icon"];
+    [self.previewView addSubview:focusView];
+    self.focusView = focusView;
+}
+/**拍照按钮点击*/
 - (void)takePhotoButtonClick:(UIButton *)sender {
     AVCaptureConnection *stillImageConnection = [self.imageOutPut connectionWithMediaType:AVMediaTypeVideo];
     UIDeviceOrientation curDeviceOrientation = [[UIDevice currentDevice] orientation];
@@ -280,6 +310,7 @@ typedef enum{
         }
     }];
 }
+/**改变焦距手势*/
 - (void)handlePinchGesture:(UIPinchGestureRecognizer *)recognizer {
     BOOL allTouchesAreThePreviewLayer = YES;
     NSUInteger numTouches = [recognizer numberOfTouches];
@@ -320,6 +351,7 @@ typedef enum{
         result = AVCaptureVideoOrientationLandscapeLeft;
     return result;
 }
+/**重拍*/
 - (void)reTakeClick {
     self.imageView.hidden = YES;
     self.reTakeButton.hidden = YES;
@@ -331,25 +363,14 @@ typedef enum{
     [self.session startRunning];
 }
 
-- (void)viewWillAppear:(BOOL)animated {
-    [super viewWillAppear:animated];
-    if (self.session) {
-        [self.session startRunning];
-    }
-}
-- (void)viewDidDisappear:(BOOL)animated {
-    [super viewDidDisappear:animated];
-    
-    if (self.session) {
-        [self.session stopRunning];
-    }
-}
+
 - (BOOL)gestureRecognizerShouldBegin:(UIGestureRecognizer *)gestureRecognizer {
     if ([gestureRecognizer isKindOfClass:[UIPinchGestureRecognizer class]]) {
         self.beginGestureScale = self.effectiveScale;
     }
     return YES;
 }
+/**确定按钮*/
 - (void)confirmBtnClick {
     
     if ([_delegate respondsToSelector:@selector(getCameraImageSuccess:)]) {
@@ -357,6 +378,7 @@ typedef enum{
     }
     [self cancle];
 }
+/**取消*/
 - (void)cancle {
     [self dismissViewControllerAnimated:YES completion:^{
         if (self.session) {
@@ -365,6 +387,7 @@ typedef enum{
         }
     }];
 }
+/**前后摄像头切换*/
 - (void)directionBtnClick:(UIButton *)sender {
     sender.selected = !sender.selected;
     AVCaptureDevicePosition desirePosition;
@@ -437,6 +460,69 @@ typedef enum{
     
     
 }
+- (void)focusGesture:(UITapGestureRecognizer *)recognizer {
+    if (recognizer.state == UIGestureRecognizerStateRecognized) {
+        CGPoint location = [recognizer locationInView:recognizer.view];
+        
+        [self focusAtPoint:location completionHandler:^{
+            [self animateFocusReticuleToPoint:location];
+        }];
+    }
+}
+/**聚焦*/
+- (void)focusAtPoint:(CGPoint)point completionHandler:(void(^)())completionHandler
+{
+    AVCaptureDevice *device = [AVCaptureDevice defaultDeviceWithMediaType:AVMediaTypeVideo];;
+    CGPoint pointOfInterest = CGPointZero;
+    CGSize frameSize = self.previewView.bounds.size;
+    pointOfInterest = CGPointMake(point.y / frameSize.height, 1.0f - (point.x / frameSize.width));
+    
+    if ([device isFocusPointOfInterestSupported] && [device isFocusModeSupported:AVCaptureFocusModeAutoFocus]) {
+        
+        //Lock camera for configuration if possible
+        NSError *error;
+        if ([device lockForConfiguration:&error]) {
+            
+            if ([device isWhiteBalanceModeSupported:AVCaptureWhiteBalanceModeAutoWhiteBalance]) {
+                [device setWhiteBalanceMode:AVCaptureWhiteBalanceModeAutoWhiteBalance];
+            }
+            
+            if ([device isFocusModeSupported:AVCaptureFocusModeContinuousAutoFocus]) {
+                [device setFocusMode:AVCaptureFocusModeAutoFocus];
+                [device setFocusPointOfInterest:pointOfInterest];
+            }
+            
+            if([device isExposurePointOfInterestSupported] && [device isExposureModeSupported:AVCaptureExposureModeContinuousAutoExposure]) {
+                [device setExposurePointOfInterest:pointOfInterest];
+                [device setExposureMode:AVCaptureExposureModeContinuousAutoExposure];
+            }
+            
+            [device unlockForConfiguration];
+            
+            completionHandler();
+        }
+    }else {
+        completionHandler();
+    }
+}
+/**聚焦动画*/
+- (void)animateFocusReticuleToPoint:(CGPoint)targetPoint
+{
+     self.focusView.alpha = 0.0;
+    self.focusView.hidden = NO;
+    [self.focusView setCenter:targetPoint];
+    
+    [UIView animateWithDuration:0.4 animations:^{
+        self.focusView.alpha = 1.0;
+    } completion:^(BOOL finished) {
+        [UIView animateWithDuration:1.0 delay:0 usingSpringWithDamping:0.3 initialSpringVelocity:0.6 options:UIViewAnimationOptionCurveEaseInOut animations:^{
+            self.focusView.alpha = 0.0;
+        } completion:^(BOOL finished) {
+            self.focusView.hidden = YES;
+        }];
+    }];
+}
+
 
 - (BOOL)prefersStatusBarHidden {
     return YES;
